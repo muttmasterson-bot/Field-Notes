@@ -654,7 +654,7 @@
 
   // ---------------- Speech recognition (real mic capture — this is a top-level page, ----------------
   // ---------------- not sandboxed, so the browser's normal permission prompt applies) ----------------
-  var recognizer = null, listening = false, restartCount = 0;
+  var recognizer = null, listening = false, sessionFinalCount = 0;
   function getSR(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
   function setMicUI(on){
     var btn = $('#micBtn');
@@ -672,6 +672,50 @@
     S.current.transcript = ta.value;
     scheduleAutosave();
   }
+  function startRecognizer(){
+    var SR = getSR();
+    recognizer = new SR();
+    // Android Chrome's "continuous" mode is unreliable — it periodically restarts
+    // its internal session and can re-send already-finalized results, which sounds
+    // like an echo (the same phrase gets appended 2-4 times). Running one short
+    // session at a time (continuous=false) and restarting it ourselves the instant
+    // it ends avoids that bug, while still feeling like continuous dictation.
+    recognizer.continuous = false;
+    recognizer.interimResults = true;
+    recognizer.lang = 'en-US';
+    sessionFinalCount = 0;
+    recognizer.onresult = function(e){
+      var interim = '';
+      for (var i=0; i<e.results.length; i++){
+        var r = e.results[i];
+        if (r.isFinal) {
+          // Only append a given result index once per session, no matter how many
+          // times onresult fires for it — belt-and-suspenders against the same
+          // duplicate-result bug, independent of e.resultIndex.
+          if (i >= sessionFinalCount) {
+            appendTranscript(r[0].transcript);
+            sessionFinalCount = i + 1;
+          }
+        } else {
+          interim += r[0].transcript;
+        }
+      }
+      setInterim(interim);
+    };
+    recognizer.onerror = function(e){
+      console.warn('SpeechRecognition error:', e.error);
+      if (e.error === 'no-speech' || e.error === 'aborted') return; // benign, onend handles restart
+      toast('Voice capture error: ' + e.error + ' — use your keyboard’s dictation key instead.');
+      listening = false; setMicUI(false);
+    };
+    recognizer.onend = function(){
+      setInterim('');
+      if (listening) {
+        try { startRecognizer(); } catch(e){ listening = false; setMicUI(false); }
+      }
+    };
+    recognizer.start();
+  }
   function toggleListening(){
     var SR = getSR();
     if (!SR) { toast('Voice capture isn’t available in this browser — use your keyboard’s dictation key instead.'); return; }
@@ -682,39 +726,11 @@
       return;
     }
     try {
-      recognizer = new SR();
-      recognizer.continuous = true;
-      recognizer.interimResults = true;
-      recognizer.lang = 'en-US';
-      restartCount = 0;
-      recognizer.onresult = function(e){
-        var finalChunk = '', interim = '';
-        for (var i=e.resultIndex; i<e.results.length; i++){
-          var r = e.results[i];
-          if (r.isFinal) finalChunk += r[0].transcript;
-          else interim += r[0].transcript;
-        }
-        if (finalChunk) appendTranscript(finalChunk);
-        setInterim(interim);
-      };
-      recognizer.onerror = function(e){
-        console.warn('SpeechRecognition error:', e.error);
-        if (e.error === 'no-speech' || e.error === 'aborted') return; // benign, onend handles restart
-        toast('Voice capture error: ' + e.error + ' — use your keyboard’s dictation key instead.');
-        listening = false; setMicUI(false);
-      };
-      recognizer.onend = function(){
-        if (listening && restartCount < 6) {
-          restartCount++;
-          try { recognizer.start(); } catch(e){ listening = false; setMicUI(false); }
-        } else {
-          listening = false; setMicUI(false); setInterim('');
-        }
-      };
-      recognizer.start();
       listening = true;
       setMicUI(true);
+      startRecognizer();
     } catch(e){
+      listening = false; setMicUI(false);
       console.warn('SpeechRecognition start failed:', e);
       toast('Could not start voice capture (' + (e && e.name ? e.name : 'error') + ') — use your keyboard’s dictation key instead.');
     }
