@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Field Notes for Reggora</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#21606E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root{
+    --bg:#F6F4EF; --surface:#FFFFFF; --surface-2:#FBFAF7; --ink:#212832; --muted:#6B7280;
+    --line:#E3DFD5; --accent:#21606E; --accent-ink:#FFFFFF; --accent-soft:#E4EEEE;
+    --ok:#3F7D4E; --ok-soft:#E5F1E6; --warn:#A8631F; --warn-soft:#F6E9D8; --danger:#B23B3B; --danger-soft:#F6E1E1;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#12171B; --surface:#1B2227; --surface-2:#202830; --ink:#ECEFEF; --muted:#9AA5AC;
+      --line:#2B343C; --accent:#4FA0AE; --accent-ink:#0B1416; --accent-soft:#1E3438;
+      --ok:#6FBF7C; --ok-soft:#1C2E20; --warn:#E0A857; --warn-soft:#332616; --danger:#E07272; --danger-soft:#3A2222;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:Inter, system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  h1,h2,h3,.display{font-family:Manrope, system-ui, sans-serif; text-wrap:balance;}
+  .mono{font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums;}
+  button{font-family:inherit;}
+  #app{max-width:640px; margin:0 auto; padding-bottom:48px;}
+
+  #appbar{
+    position:sticky; top:0; z-index:20; background:var(--surface);
+    border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px;
+    padding:14px 16px; min-height:30px;
+  }
+  #appbar .back{
+    background:none; border:none; color:var(--accent); font-size:22px; line-height:1;
+    padding:4px 6px 4px 0; cursor:pointer; font-weight:700;
+  }
+  #appbar .titles{flex:1; min-width:0;}
+  #appbar .titles h1{font-size:17px; margin:0; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #appbar .titles .sub{font-size:12px; color:var(--muted); margin-top:1px;}
+  #appbar input.addr-edit{
+    width:100%; font:inherit; font-family:Manrope,sans-serif; font-weight:800; font-size:17px;
+    background:transparent; border:none; color:var(--ink); padding:0; border-bottom:1px dashed var(--line);
+  }
+  #appbar input.addr-edit:focus{outline:none; border-bottom-color:var(--accent);}
+  .brandmark{width:28px; height:28px; border-radius:8px; flex-shrink:0;}
+
+  main{padding:16px;}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    border-radius:12px; border:1px solid var(--line); background:var(--surface);
+    color:var(--ink); font-weight:600; font-size:15px; padding:12px 16px; cursor:pointer;
+    -webkit-user-select:none; user-select:none;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .btn.subtle{background:var(--surface-2);}
+  .btn.block{width:100%;}
+  .btn.small{padding:8px 12px; font-size:13px; border-radius:9px;}
+  .btn.danger{color:var(--danger); border-color:var(--danger-soft); background:var(--danger-soft);}
+  .btn[disabled]{opacity:0.5; pointer-events:none;}
+  .btn .spin{width:14px; height:14px; border-radius:50%; border:2px solid currentColor; border-top-color:transparent; animation:spin 0.7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .row{display:flex; gap:10px;}
+  .stack{display:flex; flex-direction:column; gap:10px;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px;
+  }
+
+  /* Home */
+  .empty{
+    text-align:center; padding:40px 20px; color:var(--muted);
+  }
+  .insp-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 14px;
+    display:flex; align-items:center; gap:12px; cursor:pointer;
+  }
+  .insp-card:active{background:var(--surface-2);}
+  .insp-card .meta{flex:1; min-width:0;}
+  .insp-card .addr{font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .insp-card .when{font-size:12px; color:var(--muted); margin-top:2px;}
+  .progress-pill{
+    font-family:"IBM Plex Mono", monospace; font-size:12px; font-weight:500;
+    padding:4px 9px; border-radius:999px; background:var(--accent-soft); color:var(--accent); flex-shrink:0;
+  }
+  .del-x{
+    background:none; border:none; color:var(--muted); font-size:18px; padding:4px 6px; cursor:pointer;
+  }
+
+  /* Tabs */
+  #tabs{
+    position:sticky; top:59px; z-index:19; display:flex; gap:6px; padding:10px 16px 0 16px;
+    background:var(--bg);
+  }
+  .tab-btn{
+    flex:1; text-align:center; padding:9px 4px; border-radius:10px 10px 0 0; border:1px solid var(--line);
+    border-bottom:none; background:var(--surface-2); color:var(--muted); font-weight:600; font-size:13px; cursor:pointer;
+  }
+  .tab-btn.active{background:var(--surface); color:var(--ink); border-color:var(--line);}
+  #tabpanel{background:var(--surface); border:1px solid var(--line); border-radius:0 0 14px 14px; padding:16px; margin:0 16px;}
+
+  /* Record tab */
+  .hint{font-size:13px; color:var(--muted); line-height:1.5;}
+  textarea#transcriptBox{
+    width:100%; min-height:220px; border-radius:12px; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--ink); font:15px/1.5 Inter, sans-serif; padding:12px; resize:vertical;
+  }
+  textarea#transcriptBox:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .interim{font-size:13px; color:var(--muted); font-style:italic; min-height:18px; padding:2px 2px;}
+  .mic-row{display:flex; align-items:center; gap:10px;}
+  .mic-btn{
+    width:52px; height:52px; border-radius:50%; border:1px solid var(--line); background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer; flex-shrink:0;
+  }
+  .mic-btn.live{background:var(--danger); border-color:var(--danger); color:#fff; animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(178,59,59,0.35);} 50%{box-shadow:0 0 0 10px rgba(178,59,59,0);}}
+
+  /* Checklist */
+  .progress-bar{height:8px; border-radius:99px; background:var(--surface-2); overflow:hidden; border:1px solid var(--line);}
+  .progress-bar > div{height:100%; background:var(--ok); border-radius:99px;}
+  .checklist-item{border-bottom:1px solid var(--line); padding:12px 0;}
+  .checklist-item:last-child{border-bottom:none;}
+  .ci-head{display:flex; align-items:flex-start; gap:10px; cursor:pointer;}
+  .ci-dot{width:20px; height:20px; border-radius:50%; flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;}
+  .ci-dot.covered{background:var(--ok-soft); color:var(--ok);}
+  .ci-dot.missing{background:var(--warn-soft); color:var(--warn);}
+  .ci-body{flex:1; min-width:0;}
+  .ci-label{font-weight:700; font-size:14px;}
+  .ci-value{font-size:13px; color:var(--muted); margin-top:2px; line-height:1.4;}
+  .ci-value.missing-txt{color:var(--warn);}
+  .ci-detail{display:none; margin-top:10px; padding-left:30px;}
+  .ci-detail.open{display:block;}
+  .ci-detail textarea{
+    width:100%; min-height:70px; border-radius:10px; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--ink); font:14px/1.4 Inter, sans-serif; padding:10px; resize:vertical;
+  }
+  .ci-hint{font-size:12px; color:var(--muted); margin-bottom:6px;}
+
+  /* Photos */
+  .photo-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  .photo-card{border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--surface-2);}
+  .photo-card img{width:100%; height:120px; object-fit:cover; display:block; background:var(--line);}
+  .photo-card .pmeta{padding:8px;}
+  .photo-card select, .photo-card input[type=text]{
+    width:100%; font-size:12px; padding:6px 7px; border-radius:7px; border:1px solid var(--line);
+    background:var(--surface); color:var(--ink); margin-bottom:6px;
+  }
+  .photo-card .pactions{display:flex; gap:6px;}
+  .photo-card .pactions button{flex:1; padding:6px 4px; font-size:11px;}
+  .upload-note{font-size:12px; color:var(--muted); margin-top:4px;}
+
+  /* Compile */
+  .compile-block{margin-bottom:16px;}
+  .compile-block h3{font-size:13px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin:0 0 6px 0; font-weight:700;}
+  pre.compiled{
+    white-space:pre-wrap; word-wrap:break-word; font-family:Inter, sans-serif; font-size:13.5px; line-height:1.55;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:12px; margin:0;
+  }
+
+  .banner{
+    font-size:12.5px; padding:10px 12px; border-radius:10px; background:var(--accent-soft); color:var(--accent); margin-bottom:14px; line-height:1.4;
+  }
+  .banner.warn{background:var(--warn-soft); color:var(--warn);}
+
+  #fab-new{
+    position:fixed; right:20px; bottom:24px; z-index:30;
+    background:var(--accent); color:var(--accent-ink); border:none; border-radius:16px;
+    padding:14px 20px; font-weight:700; font-size:15px; box-shadow:0 6px 18px rgba(0,0,0,0.18); cursor:pointer;
+    display:flex; align-items:center; gap:8px;
+  }
+
+  #toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); z-index:50;
+    background:var(--ink); color:var(--bg); padding:11px 18px; border-radius:99px; font-size:13.5px;
+    opacity:0; transition:opacity 0.2s ease, transform 0.2s ease; pointer-events:none; max-width:88vw; text-align:center;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- Checklist definition (subject-property intake, per URAR/UAD 3.6) ----------------
+  var CHECKLIST = [
+    {key:'propertyType', label:'Property / Style Type', hint:'e.g., single-family detached, colonial, ranch, condo, duplex'},
+    {key:'yearBuilt', label:'Year Built', hint:'Approximate or exact year built / effective age'},
+    {key:'glaRooms', label:'GLA & Room Count', hint:'Above-grade square footage, bedroom / bathroom count'},
+    {key:'siteSize', label:'Site Size', hint:'Lot size or acreage'},
+    {key:'zoning', label:'Zoning', hint:'Zoning designation, any apparent non-conformity'},
+    {key:'viewLocation', label:'View / Location Factors', hint:'Adjacent land use, view, busy road, corner lot, backs to...'},
+    {key:'qualityRating', label:'Quality Rating', hint:'Construction quality; note interior vs. exterior if they differ (Q1–Q6)'},
+    {key:'conditionRating', label:'Condition Rating', hint:'Overall condition; note interior vs. exterior if they differ (C1–C6)'},
+    {key:'updates', label:'Updates / Renovations', hint:'What was updated and roughly when (kitchen, bath, roof, HVAC...)'},
+    {key:'functionalIssues', label:'Functional Issues / Deficiencies', hint:'Anything functionally inadequate, obsolete, or deferred'},
+    {key:'energyGreen', label:'Energy / Green Features', hint:'Solar, high-efficiency systems, extra insulation, etc.'},
+    {key:'aduAccessory', label:'ADU / Accessory Structures', hint:'In-law suite, guest house, shed, detached studio'},
+    {key:'garageParking', label:'Garage / Parking', hint:'Attached / detached, # of spaces, carport, driveway'},
+    {key:'basement', label:'Basement / Below-Grade', hint:'Present or not, finished %, walkout, crawl space'}
+  ];
+
+  var PATTERNS = {
+    propertyType: [/single[- ]family/i,/colonial/i,/\branch\b/i,/cape cod/i,/split[- ]level/i,/split foyer/i,/bungalow/i,/condo(minium)?/i,/town ?house/i,/\bduplex\b/i,/tri[- ]level/i,/craftsman/i,/victorian/i,/manufactured/i,/\bmodular\b/i],
+    yearBuilt: [/built\s+(in\s+)?(18|19|20)\d{2}/i, /(18|19|20)\d{2}[^.\n]{0,15}(built|construction)/i, /year built[^.\n]{0,10}(18|19|20)\d{2}/i],
+    glaRooms: [/\b\d{1,2}\s*(bed(room)?s?|bd)\b/i, /\b\d{1,2}\s*(bath(room)?s?|ba)\b/i, /\b[\d,]{3,5}\s*(sq(uare)?\.?\s?f(ee|oo)?t|sf)\b/i],
+    siteSize: [/\b\d+(\.\d+)?\s*acres?\b/i, /\blot\s+(size|is|measures)\b/i, /\b[\d,]{3,6}\s*sq(uare)?\.?\s?f(ee|oo)?t\.?\s*lot\b/i],
+    zoning: [/\bzon(ed|ing)\b/i],
+    viewLocation: [/\bview\b/i,/busy road/i,/backs to/i,/adjacent to/i,/corner lot/i,/cul[- ]de[- ]sac/i,/overlooks/i,/faces (the )?(street|road)/i],
+    qualityRating: [/\bq[1-6]\b/i, /quality (rating|is|of|grade)/i],
+    conditionRating: [/\bc[1-6]\b/i, /condition (rating|is|of)/i, /(excellent|good|average|fair|poor)\s+condition/i],
+    updates: [/\b(updated|renovat(ed|ion)|remodel(ed|ing)?|replaced|new roof|new kitchen|new bath)\b/i],
+    functionalIssues: [/deferred maintenance/i, /functional (obsolescence|issue|deficiency)/i, /needs repair/i, /\bdamage/i, /\bcrack(ed|s)?\b/i, /\bleak/i, /\bmold\b/i, /deficien(t|cy)/i],
+    energyGreen: [/\bsolar\b/i, /energy[- ]efficient/i, /energy star/i, /\binsulat/i, /tankless/i, /geothermal/i, /(double|dual)[- ]pane/i],
+    aduAccessory: [/\badu\b/i, /accessory dwelling/i, /in[- ]law suite/i, /guest house/i, /granny flat/i, /detached studio/i, /\bcasita\b/i],
+    garageParking: [/\bgarage\b/i, /\bcarport\b/i, /\bdriveway\b/i, /\bparking\b/i],
+    basement: [/\bbasement\b/i, /crawl space/i, /\bslab\b/i, /below[- ]grade/i, /walk ?out/i]
+  };
+
+  // ---------------- State ----------------
+  var S = {
+    view: 'home', tab: 'record',
+    inspections: [], current: null,
+    storageMode: 'idb',      // 'idb' | 'memory'
+    saveTimer: null,
+    openChecklistKey: null,
+    busy: {}
+  };
+
+  // ---------------- Small helpers ----------------
+  function $(sel, root){ return (root||document).querySelector(sel); }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function uid(){ return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+  function nowIso(){ return new Date().toISOString(); }
+  function fmtWhen(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    var diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+    return d.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
+  }
+  var toastTimer = null;
+  function toast(msg){
+    var t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 3200);
+  }
+  function emptyFields(){
+    var f = {};
+    CHECKLIST.forEach(function(c){ f[c.key] = {status:'missing', value:'', source:'auto'}; });
+    return f;
+  }
+  function coveredCount(insp){
+    if (!insp || !insp.fields) return 0;
+    var n = 0;
+    CHECKLIST.forEach(function(c){ if (insp.fields[c.key] && insp.fields[c.key].status === 'covered') n++; });
+    return n;
+  }
+  function setBusy(key, val){ S.busy[key] = val; }
+
+  // ---------------- IndexedDB persistence ----------------
+  var DB_NAME = 'reggora_field_notes', DB_VERSION = 1;
+  var idbConn = null;
+
+  function getDB(){
+    if (idbConn) return Promise.resolve(idbConn);
+    return new Promise(function(resolve, reject){
+      if (!('indexedDB' in window)) { reject(new Error('no indexeddb')); return; }
+      var req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function(e){
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains('inspections')) db.createObjectStore('inspections', {keyPath:'id'});
+        if (!db.objectStoreNames.contains('photoBlobs')) db.createObjectStore('photoBlobs');
+      };
+      req.onsuccess = function(e){ idbConn = e.target.result; resolve(idbConn); };
+      req.onerror = function(e){ reject(e.target.error); };
+    });
+  }
+  function idbGetAllInspections(){
+    return getDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('inspections','readonly');
+        var req = tx.objectStore('inspections').getAll();
+        req.onsuccess = function(){ resolve(req.result || []); };
+        req.onerror = function(){ reject(req.error); };
+      });
+    });
+  }
+  function idbGetInspection(id){
+    return getDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('inspections','readonly');
+        var req = tx.objectStore('inspections').get(id);
+        req.onsuccess = function(){ resolve(req.result || null); };
+        req.onerror = function(){ reject(req.error); };
+      });
+    });
+  }
+  function idbPutInspection(insp){
+    return getDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('inspections','readwrite');
+        tx.objectStore('inspections').put(insp);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+  function idbDeleteInspection(id){
+    return getDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('inspections','readwrite');
+        tx.objectStore('inspections').delete(id);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+  function idbPutPhotoBlob(id, blob){
+    return getDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('photoBlobs','readwrite');
+        tx.objectStore('photoBlobs').put(blob, id);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+  function idbGetPhotoBlob(id){
+    return getDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('photoBlobs','readonly');
+        var req = tx.objectStore('photoBlobs').get(id);
+        req.onsuccess = function(){ resolve(req.result || null); };
+        req.onerror = function(){ reject(req.error); };
+      });
+    });
+  }
+  function idbDeletePhotoBlob(id){
+    return getDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('photoBlobs','readwrite');
+        tx.objectStore('photoBlobs').delete(id);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+  // Strip transient (non-persisted) fields before writing an inspection record.
+  function serializeInspection(insp){
+    var copy = {};
+    for (var k in insp) if (Object.prototype.hasOwnProperty.call(insp,k)) copy[k] = insp[k];
+    copy.photos = (insp.photos||[]).map(function(p){
+      return {id:p.id, caption:p.caption, category:p.category, addedAt:p.addedAt};
+    });
+    return copy;
+  }
+  // Reattach fresh object URLs for a loaded inspection's photos.
+  function hydratePhotos(insp){
+    var list = insp.photos || [];
+    return Promise.all(list.map(function(p){
+      return idbGetPhotoBlob(p.id).then(function(blob){
+        p.url = blob ? URL.createObjectURL(blob) : '';
+        return p;
+      }).catch(function(){ p.url = ''; return p; });
+    })).then(function(){ return insp; });
+  }
+
+  // ---------------- App-level persistence wrappers ----------------
+  async function loadHomeList(){
+    if (S.storageMode !== 'idb') return;
+    try {
+      var all = await idbGetAllInspections();
+      all.sort(function(a,b){ return (b.updatedAt||'').localeCompare(a.updatedAt||''); });
+      S.inspections = all;
+      if (S.view === 'home') renderApp();
+    } catch(e){ console.warn('load home list failed', e); }
+  }
+
+  async function createInspection(){
+    var data = {
+      id: uid(), address:'', createdAt:nowIso(), updatedAt:nowIso(),
+      transcript:'', fields:emptyFields(), photos:[]
+    };
+    if (S.storageMode === 'idb') {
+      try { await idbPutInspection(serializeInspection(data)); } catch(e){ toast('Could not save — continuing without storage this session.'); S.storageMode = 'memory'; }
+    }
+    openInspection(data.id, data);
+  }
+
+  async function openInspection(id, preloaded){
+    S.view = 'inspection';
+    S.tab = 'record';
+    S.openChecklistKey = null;
+    if (preloaded) { S.current = preloaded; renderApp(); return; }
+    renderApp();
+    try {
+      var data = await idbGetInspection(id);
+      if (!data) { toast('That inspection could not be found.'); goHome(); return; }
+      if (!data.fields) data.fields = emptyFields();
+      if (!data.photos) data.photos = [];
+      await hydratePhotos(data);
+      S.current = data;
+      renderApp();
+    } catch(e){
+      toast('Could not load that inspection.');
+    }
+  }
+
+  function scheduleAutosave(){
+    clearTimeout(S.saveTimer);
+    S.saveTimer = setTimeout(saveCurrent, 700);
+  }
+  async function saveCurrent(){
+    if (!S.current) return;
+    S.current.updatedAt = nowIso();
+    if (S.storageMode !== 'idb') return;
+    try { await idbPutInspection(serializeInspection(S.current)); }
+    catch(e){ console.warn('save failed', e); }
+  }
+
+  async function deleteInspection(id, ev){
+    if (ev) ev.stopPropagation();
+    if (!confirm('Delete this inspection and its notes? This can\'t be undone.')) return;
+    try {
+      var data = await idbGetInspection(id);
+      if (data && data.photos) {
+        for (var i=0;i<data.photos.length;i++){
+          try { await idbDeletePhotoBlob(data.photos[i].id); } catch(e){}
+        }
+      }
+      await idbDeleteInspection(id);
+      toast('Inspection deleted.');
+      loadHomeList();
+    } catch(e){
+      toast('Could not delete — please try again.');
+    }
+  }
+
+  function goHome(){
+    S.view = 'home'; S.current = null; renderApp(); loadHomeList();
+  }
+
+  // ---------------- Analysis (on-device keyword matching — no network call) ----------------
+  function extractSnippet(transcript, regexes){
+    var sentences = transcript.split(/(?<=[.!?])\s+|\n+/);
+    for (var i=0;i<regexes.length;i++){
+      var re = regexes[i];
+      for (var j=0;j<sentences.length;j++){
+        var s = sentences[j];
+        if (re.test(s)) {
+          var t = s.trim();
+          if (t.length > 160) t = t.slice(0,157) + '…';
+          return t;
+        }
+      }
+    }
+    return null;
+  }
+  function regexAnalyze(transcript){
+    var out = {};
+    CHECKLIST.forEach(function(item){
+      var regs = PATTERNS[item.key] || [];
+      var snippet = extractSnippet(transcript, regs);
+      out[item.key] = snippet ? {status:'covered', value:snippet} : {status:'missing', value:''};
+    });
+    return out;
+  }
+  function mergeFields(newFields){
+    var merged = {};
+    CHECKLIST.forEach(function(item){
+      var key = item.key;
+      var existing = (S.current.fields && S.current.fields[key]) || {status:'missing', value:'', source:'auto'};
+      if (existing.source === 'manual') { merged[key] = existing; return; }
+      var incoming = newFields ? newFields[key] : null;
+      if (incoming && incoming.status === 'covered' && incoming.value) {
+        merged[key] = {status:'covered', value:String(incoming.value).slice(0,300), source:'auto'};
+      } else {
+        merged[key] = {status:'missing', value:'', source:'auto'};
+      }
+    });
+    return merged;
+  }
+  function runAnalyze(){
+    if (!S.current.transcript || !S.current.transcript.trim()) { toast('Record or type some notes first.'); return; }
+    var result = regexAnalyze(S.current.transcript);
+    S.current.fields = mergeFields(result);
+    var n = coveredCount(S.current);
+    toast('Analyzed — ' + n + ' of ' + CHECKLIST.length + ' categories covered.');
+    S.tab = 'checklist';
+    saveCurrent();
+    renderApp();
+  }
+  function saveGuidedField(key, text){
+    if (!text || !text.trim()) { toast('Nothing to save.'); return; }
+    S.current.fields[key] = {status:'covered', value:text.trim().slice(0,300), source:'manual'};
+    var label = CHECKLIST.filter(function(c){return c.key===key;})[0].label;
+    S.current.transcript = (S.current.transcript || '') + '\n\n[' + label + ']: ' + text.trim();
+    S.openChecklistKey = null;
+    saveCurrent();
+    renderApp();
+    toast('Saved.');
+  }
+
+  // ---------------- Photos (stored as Blobs in IndexedDB) ----------------
+  async function handlePhotoFiles(fileList){
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    setBusy('photos', true);
+    for (var i=0;i<files.length;i++){
+      var file = files[i];
+      var id = uid();
+      try {
+        if (S.storageMode === 'idb') await idbPutPhotoBlob(id, file);
+        S.current.photos.push({id:id, url:URL.createObjectURL(file), caption:'', category:'', addedAt:nowIso()});
+      } catch(e){
+        toast('A photo failed to save and was skipped.');
+      }
+    }
+    setBusy('photos', false);
+    saveCurrent();
+    renderApp();
+  }
+  function updatePhotoMeta(photoId, field, value){
+    var p = S.current.photos.filter(function(p){return p.id===photoId;})[0];
+    if (!p) return;
+    p[field] = value;
+    scheduleAutosave();
+  }
+  async function removePhoto(photoId){
+    if (!confirm('Remove this photo from the inspection?')) return;
+    S.current.photos = S.current.photos.filter(function(p){return p.id!==photoId;});
+    renderApp();
+    saveCurrent();
+    try { await idbDeletePhotoBlob(photoId); } catch(e){}
+  }
+  async function sharePhoto(photo){
+    try {
+      var blob = await idbGetPhotoBlob(photo.id);
+      if (!blob) { toast('Could not find that photo.'); return; }
+      var file = new File([blob], 'photo.jpg', {type: blob.type || 'image/jpeg'});
+      if (navigator.canShare && navigator.canShare({files:[file]})) {
+        await navigator.share({files:[file], title: photo.caption || 'Property photo'});
+      } else if (navigator.share) {
+        await navigator.share({title: photo.caption || 'Property photo'});
+      } else {
+        toast('Sharing isn’t supported in this browser.');
+      }
+    } catch(e){
+      if (e && e.name === 'AbortError') return;
+      toast('Could not share this photo.');
+    }
+  }
+  async function shareAllPhotos(){
+    if (!S.current.photos.length) { toast('No photos yet.'); return; }
+    try {
+      var files = [];
+      for (var i=0;i<S.current.photos.length;i++){
+        var blob = await idbGetPhotoBlob(S.current.photos[i].id);
+        if (blob) files.push(new File([blob], 'photo-' + (i+1) + '.jpg', {type: blob.type || 'image/jpeg'}));
+      }
+      if (navigator.canShare && navigator.canShare({files:files})) {
+        await navigator.share({files:files, title:(S.current.address || 'Subject property') + ' photos'});
+      } else {
+        toast('This browser can’t share multiple photos at once — try sharing them one at a time.');
+      }
+    } catch(e){
+      if (e && e.name === 'AbortError') return;
+      toast('Could not share the photos.');
+    }
+  }
+
+  // ---------------- Compile ----------------
+  function buildCompiledText(insp){
+    var lines = [];
+    lines.push('Subject Property Field Notes — ' + (insp.address || 'Untitled inspection'));
+    lines.push('Recorded: ' + fmtWhen(insp.updatedAt));
+    lines.push('');
+    lines.push('Collected data:');
+    var any = false;
+    CHECKLIST.forEach(function(item){
+      var f = insp.fields[item.key];
+      if (f && f.status === 'covered' && f.value) { lines.push(item.label + ': ' + f.value); any = true; }
+    });
+    if (!any) lines.push('(none extracted yet)');
+    var missing = CHECKLIST.filter(function(item){
+      var f = insp.fields[item.key];
+      return !(f && f.status === 'covered');
+    });
+    if (missing.length) {
+      lines.push('');
+      lines.push('Still needed: ' + missing.map(function(m){return m.label;}).join(', '));
+    }
+    if (insp.transcript) {
+      lines.push('');
+      lines.push('Full raw field notes (verbatim dictation):');
+      lines.push(insp.transcript.trim());
+    }
+    if (insp.photos && insp.photos.length) {
+      lines.push('');
+      lines.push('Photos attached: ' + insp.photos.length + ' (open the Photos tab in this app to view or share them)');
+    }
+    return lines.join('\n');
+  }
+  async function copyCompiled(){
+    var text = buildCompiledText(S.current);
+    var ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch(e){}
+    if (!ok) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch(e2){ ok = false; }
+    }
+    if (ok) toast('Copied — paste it into a Claude chat to refine, then into Reggora.');
+    else toast('Could not copy automatically — tap and hold the text below to select and copy it manually.');
+  }
+  async function shareCompiled(){
+    var text = buildCompiledText(S.current);
+    try {
+      if (navigator.share) await navigator.share({title:(S.current.address || 'Subject property') + ' — field notes', text:text});
+      else await copyCompiled();
+    } catch(e){
+      if (e && e.name === 'AbortError') return;
+      toast('Could not open the share sheet.');
+    }
+  }
+
+  // ---------------- Speech recognition (real mic capture — this is a top-level page, ----------------
+  // ---------------- not sandboxed, so the browser's normal permission prompt applies) ----------------
+  var recognizer = null, listening = false, restartCount = 0;
+  function getSR(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
+  function setMicUI(on){
+    var btn = $('#micBtn');
+    if (!btn) return;
+    btn.classList.toggle('live', on);
+    btn.textContent = on ? '⏹' : '🎙️';
+    btn.setAttribute('aria-label', on ? 'Stop voice capture' : 'Start voice capture');
+  }
+  function setInterim(text){ var el = $('#interimLine'); if (el) el.textContent = text || ''; }
+  function appendTranscript(text){
+    var ta = $('#transcriptBox');
+    if (!ta) return;
+    var sep = (ta.value && !/\s$/.test(ta.value)) ? ' ' : '';
+    ta.value = ta.value + sep + text.trim() + ' ';
+    S.current.transcript = ta.value;
+    scheduleAutosave();
+  }
+  function toggleListening(){
+    var SR = getSR();
+    if (!SR) { toast('Voice capture isn’t available in this browser — use your keyboard’s dictation key instead.'); return; }
+    if (listening) {
+      listening = false;
+      try{ recognizer && recognizer.stop(); }catch(e){}
+      setMicUI(false);
+      return;
+    }
+    try {
+      recognizer = new SR();
+      recognizer.continuous = true;
+      recognizer.interimResults = true;
+      recognizer.lang = 'en-US';
+      restartCount = 0;
+      recognizer.onresult = function(e){
+        var finalChunk = '', interim = '';
+        for (var i=e.resultIndex; i<e.results.length; i++){
+          var r = e.results[i];
+          if (r.isFinal) finalChunk += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        if (finalChunk) appendTranscript(finalChunk);
+        setInterim(interim);
+      };
+      recognizer.onerror = function(e){
+        console.warn('SpeechRecognition error:', e.error);
+        if (e.error === 'no-speech' || e.error === 'aborted') return; // benign, onend handles restart
+        toast('Voice capture error: ' + e.error + ' — use your keyboard’s dictation key instead.');
+        listening = false; setMicUI(false);
+      };
+      recognizer.onend = function(){
+        if (listening && restartCount < 6) {
+          restartCount++;
+          try { recognizer.start(); } catch(e){ listening = false; setMicUI(false); }
+        } else {
+          listening = false; setMicUI(false); setInterim('');
+        }
+      };
+      recognizer.start();
+      listening = true;
+      setMicUI(true);
+    } catch(e){
+      console.warn('SpeechRecognition start failed:', e);
+      toast('Could not start voice capture (' + (e && e.name ? e.name : 'error') + ') — use your keyboard’s dictation key instead.');
+    }
+  }
+
+  // ---------------- Rendering ----------------
+  function renderApp(){
+    var root = $('#app');
+    if (S.view === 'home') root.innerHTML = tplHome();
+    else root.innerHTML = tplInspection();
+    wireGlobal();
+  }
+
+  function tplHome(){
+    var list = S.inspections;
+    var body;
+    if (S.storageMode !== 'idb') {
+      body = '<div class="banner warn">On-device storage isn’t available in this browser, so notes only last for this tab — compile and share/copy before closing it.</div>' +
+        (list.length ? '' : '<div class="empty">Tap “New Inspection” to start.</div>');
+    } else if (!list.length) {
+      body = '<div class="empty">No inspections yet.<br>Tap “New Inspection” to start your first walkthrough.</div>';
+    } else {
+      body = '<div class="stack">' + list.map(function(insp){
+        var n = coveredCount(insp);
+        return '<div class="insp-card" data-open="' + esc(insp.id) + '">' +
+          '<div class="meta"><div class="addr">' + esc(insp.address || 'Untitled inspection') + '</div>' +
+          '<div class="when mono">' + esc(fmtWhen(insp.updatedAt)) + '</div></div>' +
+          '<div class="progress-pill">' + n + '/' + CHECKLIST.length + '</div>' +
+          '<button class="del-x" data-del="' + esc(insp.id) + '" aria-label="Delete">×</button>' +
+          '</div>';
+      }).join('') + '</div>';
+    }
+    return '' +
+      '<div id="appbar">' + iconSvg(28) +
+        '<div class="titles"><h1>Field Notes for Reggora</h1><div class="sub">Subject-property intake</div></div>' +
+      '</div>' +
+      '<main>' + body + '</main>' +
+      '<button id="fab-new" data-action="new">+ New Inspection</button>';
+  }
+
+  function iconSvg(size){
+    return '<svg class="brandmark" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="24" height="24" rx="6" fill="#21606E"/>' +
+      '<path d="M12 5.5L7 10h1.4v6.2h3v-3.4h1.2v3.4h3V10H17L12 5.5Z" fill="#F7F5F1"/>' +
+      '<circle cx="17" cy="17" r="4.6" fill="#3F7D4E"/>' +
+      '<path d="M14.9 17.1l1.5 1.5 2.7-2.9" stroke="#F7F5F1" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>';
+  }
+
+  function tplInspection(){
+    var insp = S.current;
+    if (!insp) return '<div class="empty">Loading…</div>';
+    var tabs = [{id:'record',label:'Record'},{id:'checklist',label:'Checklist'},{id:'photos',label:'Photos'},{id:'compile',label:'Compile'}];
+    var tabsHtml = tabs.map(function(t){
+      return '<button class="tab-btn' + (S.tab===t.id?' active':'') + '" data-tab="' + t.id + '">' + t.label + '</button>';
+    }).join('');
+    return '' +
+      '<div id="appbar">' +
+        '<button class="back" data-action="home" aria-label="Back">‹</button>' +
+        '<div class="titles">' +
+          '<input class="addr-edit" id="addrInput" placeholder="Tap to add property address" value="' + esc(insp.address) + '">' +
+          '<div class="sub">Updated ' + esc(fmtWhen(insp.updatedAt)) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div id="tabs">' + tabsHtml + '</div>' +
+      '<main style="padding-top:0;"><div id="tabpanel">' + tabContent() + '</div></main>';
+  }
+
+  function tabContent(){
+    if (S.tab === 'record') return tplRecord();
+    if (S.tab === 'checklist') return tplChecklist();
+    if (S.tab === 'photos') return tplPhotos();
+    return tplCompile();
+  }
+
+  function tplRecord(){
+    var insp = S.current;
+    var sr = !!getSR();
+    return '' +
+      '<div class="hint" style="margin-bottom:12px;">Walk the property and describe what you see — condition, systems, ' +
+      'updates, anything notable. Don’t worry about order or which field it belongs to; you’ll sort that out next.</div>' +
+      (sr ? '<div class="mic-row" style="margin-bottom:10px;">' +
+        '<button class="mic-btn" id="micBtn" data-action="mic" aria-label="Start voice capture">🎙️</button>' +
+        '<div style="flex:1;"><div style="font-size:12.5px; color:var(--muted);">Tap to start continuous voice capture — Chrome will ask for microphone permission the first time; allow it.</div>' +
+        '<div class="interim" id="interimLine"></div></div>' +
+      '</div>' : '<div class="hint" style="margin-bottom:10px; color:var(--warn);">In-app voice capture isn’t supported in this browser — use your keyboard’s dictation key instead.</div>') +
+      '<textarea id="transcriptBox" placeholder="Start talking or typing… e.g. “Ranch style, looks like it was built in the 90s, three bed two bath, roof looks newer, maybe five years old…”">' + esc(insp.transcript) + '</textarea>' +
+      '<div class="row" style="margin-top:12px;">' +
+        '<button class="btn primary block" data-action="analyze">Analyze Notes → Checklist</button>' +
+      '</div>';
+  }
+
+  function tplChecklist(){
+    var insp = S.current;
+    var n = coveredCount(insp);
+    var pct = Math.round((n / CHECKLIST.length) * 100);
+    var rows = CHECKLIST.map(function(item){
+      var f = insp.fields[item.key] || {status:'missing', value:''};
+      var covered = f.status === 'covered';
+      var open = S.openChecklistKey === item.key;
+      return '' +
+        '<div class="checklist-item">' +
+          '<div class="ci-head" data-toggle="' + item.key + '">' +
+            '<div class="ci-dot ' + (covered?'covered':'missing') + '">' + (covered?'✓':'!') + '</div>' +
+            '<div class="ci-body">' +
+              '<div class="ci-label">' + esc(item.label) + '</div>' +
+              (covered ? '<div class="ci-value">' + esc(f.value) + '</div>' : '<div class="ci-value missing-txt">Not mentioned yet — tap to add</div>') +
+            '</div>' +
+          '</div>' +
+          '<div class="ci-detail' + (open?' open':'') + '" data-panel="' + item.key + '">' +
+            '<div class="ci-hint">' + esc(item.hint) + '</div>' +
+            '<textarea data-fieldinput="' + item.key + '" placeholder="Dictate or type just this detail…">' + esc(f.value) + '</textarea>' +
+            '<div class="row" style="margin-top:8px;">' +
+              '<button class="btn primary small" data-savefield="' + item.key + '">Save</button>' +
+              '<button class="btn subtle small" data-closefield="1">Cancel</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+    return '' +
+      '<div style="margin-bottom:14px;">' +
+        '<div class="row" style="justify-content:space-between; margin-bottom:6px; font-size:13px; color:var(--muted);">' +
+          '<span>' + n + ' of ' + CHECKLIST.length + ' collected</span><span class="mono">' + pct + '%</span>' +
+        '</div>' +
+        '<div class="progress-bar"><div style="width:' + pct + '%;"></div></div>' +
+      '</div>' + rows;
+  }
+
+  function tplPhotos(){
+    var insp = S.current;
+    var catOptions = '<option value="">General</option>' + CHECKLIST.map(function(c){ return '<option value="'+esc(c.key)+'">'+esc(c.label)+'</option>'; }).join('');
+    var grid = insp.photos.map(function(p){
+      var opts = catOptions.replace('value="'+p.category+'"', 'value="'+p.category+'" selected');
+      return '' +
+        '<div class="photo-card">' +
+          '<img src="' + esc(p.url) + '" alt="Property photo">' +
+          '<div class="pmeta">' +
+            '<select data-photocat="' + p.id + '">' + opts + '</select>' +
+            '<input type="text" data-photocap="' + p.id + '" placeholder="Caption (optional)" value="' + esc(p.caption) + '">' +
+            '<div class="pactions">' +
+              '<button class="btn small" data-photoshare="' + p.id + '">Share</button>' +
+              '<button class="btn small danger" data-photodel="' + p.id + '">Remove</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+    return '' +
+      '<div class="row" style="margin-bottom:6px;">' +
+        '<button class="btn primary block" data-action="addphoto"' + (S.busy.photos?' disabled':'') + '>' +
+          (S.busy.photos ? '<span class="spin"></span> Saving…' : '📷 Add Photos') +
+        '</button>' +
+      '</div>' +
+      '<input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none;">' +
+      (insp.photos.length ? '<div class="photo-grid" style="margin-top:14px;">' + grid + '</div>' +
+        '<div class="row" style="margin-top:14px;"><button class="btn subtle block" data-action="shareallphotos">Share All Photos</button></div>'
+        : '<div class="empty" style="padding:24px 10px;">No photos yet.</div>');
+  }
+
+  function tplCompile(){
+    var insp = S.current;
+    var text = buildCompiledText(insp);
+    return '' +
+      '<div class="compile-block">' +
+        '<h3>Ready to paste</h3>' +
+        '<pre class="compiled" id="compiledText">' + esc(text) + '</pre>' +
+      '</div>' +
+      '<div class="row">' +
+        '<button class="btn primary block" data-action="copy">Copy to Clipboard</button>' +
+        '<button class="btn subtle block" data-action="share">Share…</button>' +
+      '</div>' +
+      '<div class="hint" style="margin-top:12px;">Paste this into a Claude conversation to turn it into the polished write-up (condition & quality comments, etc.), then drop the finished text into the matching Reggora fields. If Copy doesn’t work, tap and hold the text above to select and copy it manually.</div>';
+  }
+
+  // ---------------- Event wiring ----------------
+  var wired = false;
+  function wireGlobal(){
+    if (wired) return;
+    wired = true;
+    document.addEventListener('click', onClick);
+    document.addEventListener('change', onChange);
+    document.addEventListener('input', onInput);
+  }
+  function onClick(e){
+    var t = e.target;
+    var openBtn = t.closest && t.closest('[data-open]');
+    if (openBtn && !t.closest('[data-del]')) { openInspection(openBtn.getAttribute('data-open')); return; }
+    var delBtn = t.closest && t.closest('[data-del]');
+    if (delBtn) { deleteInspection(delBtn.getAttribute('data-del'), e); return; }
+    var actionEl = t.closest && t.closest('[data-action]');
+    if (actionEl) {
+      var a = actionEl.getAttribute('data-action');
+      if (a === 'new') createInspection();
+      else if (a === 'home') { listening && toggleListening(); goHome(); }
+      else if (a === 'analyze') runAnalyze();
+      else if (a === 'mic') toggleListening();
+      else if (a === 'addphoto') { var inp = $('#photoInput'); if (inp) inp.click(); }
+      else if (a === 'shareallphotos') shareAllPhotos();
+      else if (a === 'copy') copyCompiled();
+      else if (a === 'share') shareCompiled();
+      return;
+    }
+    var tabBtn = t.closest && t.closest('[data-tab]');
+    if (tabBtn) {
+      listening && toggleListening();
+      S.tab = tabBtn.getAttribute('data-tab');
+      renderApp();
+      return;
+    }
+    var toggleEl = t.closest && t.closest('[data-toggle]');
+    if (toggleEl) {
+      var key = toggleEl.getAttribute('data-toggle');
+      S.openChecklistKey = (S.openChecklistKey === key) ? null : key;
+      renderApp();
+      return;
+    }
+    var saveField = t.closest && t.closest('[data-savefield]');
+    if (saveField) {
+      var fk = saveField.getAttribute('data-savefield');
+      var ta = document.querySelector('[data-fieldinput="' + fk + '"]');
+      saveGuidedField(fk, ta ? ta.value : '');
+      return;
+    }
+    var closeField = t.closest && t.closest('[data-closefield]');
+    if (closeField) { S.openChecklistKey = null; renderApp(); return; }
+    var photoDel = t.closest && t.closest('[data-photodel]');
+    if (photoDel) { removePhoto(photoDel.getAttribute('data-photodel')); return; }
+    var photoShare = t.closest && t.closest('[data-photoshare]');
+    if (photoShare) {
+      var pid = photoShare.getAttribute('data-photoshare');
+      var photo = S.current.photos.filter(function(p){return p.id===pid;})[0];
+      if (photo) sharePhoto(photo);
+      return;
+    }
+  }
+  function onChange(e){
+    var t = e.target;
+    if (t.id === 'photoInput') { handlePhotoFiles(t.files); t.value=''; return; }
+    if (t.hasAttribute && t.hasAttribute('data-photocat')) { updatePhotoMeta(t.getAttribute('data-photocat'), 'category', t.value); return; }
+  }
+  function onInput(e){
+    var t = e.target;
+    if (t.id === 'addrInput') { S.current.address = t.value; scheduleAutosave(); return; }
+    if (t.id === 'transcriptBox') { S.current.transcript = t.value; scheduleAutosave(); return; }
+    if (t.hasAttribute && t.hasAttribute('data-photocap')) { updatePhotoMeta(t.getAttribute('data-photocap'), 'caption', t.value); return; }
+  }
+
+  // ---------------- Boot ----------------
+  async function boot(){
+    try {
+      await getDB();
+      S.storageMode = 'idb';
+    } catch(e){
+      S.storageMode = 'memory';
+    }
+    renderApp();
+    if (S.storageMode === 'idb') loadHomeList();
+  }
+  boot();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){ /* non-fatal */ });
+    });
+  }
+})();
+</script>
+</body>
+</html>
